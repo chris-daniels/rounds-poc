@@ -12,6 +12,7 @@ func setupDatabase() *gorm.DB {
 	// Clear the database so we start fresh Delete test.db
 	os.Remove("test.db")
 
+	// Open a database connection
 	db, err := gorm.Open(sqlite.Open("test.db"), &gorm.Config{})
 	if err != nil {
 		panic("failed to connect database")
@@ -30,8 +31,4 @@ func setupDatabase() *gorm.DB {
 
 func main() {
 	fmt.Println("Hello, World!")
-
-	// // Set up database
-	// db := setupDatabase()
-
 }
