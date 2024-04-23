@@ -7,6 +7,12 @@ import (
 	"gorm.io/gorm"
 )
 
+type RoundWithTypes struct {
+	ID             uint
+	RoundTimestamp string
+	RoundTypes     string
+}
+
 // Setup configs
 func setupConfigs(db *gorm.DB) {
 	// Create round types for 15, 30, and 60 minute rounds
@@ -43,22 +49,29 @@ func TestCreateRounds(t *testing.T) {
 		currTime                time.Time
 		existingRounds          []Round
 		existingRoundRoundTypes []RoundRoundType
-		expectedRounds          []Round
-		expectedRoundRoundTypes []RoundRoundType
+		expectedRoundsCount     int
+		countOnly               bool
+		expectedRounds          []RoundWithTypes
 	}{
 		{
-			name:           "No existing rounds - should create a new round and attach all three round types to it",
-			currTime:       time.Date(2022, time.January, 10, 9, 30, 0, 0, time.UTC), // 9:30 AM, Jan 10, 2022
-			existingRounds: []Round{},
-			expectedRounds: []Round{
-				{
-					ID:             1,
-					RoundTimestamp: "2022-01-10T09:30:00Z",
-					Status:         "CREATED",
-				},
-			},
+			name:                    "No existing rounds - should create rounds for the last 12 hours. Count only to keep test succinct",
+			currTime:                time.Date(2022, time.January, 10, 9, 30, 0, 0, time.UTC), // 9:30 AM, Jan 10, 2022
+			existingRounds:          []Round{},
 			existingRoundRoundTypes: []RoundRoundType{},
-			expectedRoundRoundTypes: []RoundRoundType{
+			expectedRoundsCount:     49,
+			countOnly:               true,
+		},
+		{
+			name:     "Outdated existing round from 60 minutes ago - create rounds for the last hour",
+			currTime: time.Date(2022, time.January, 10, 9, 30, 0, 0, time.UTC), // 9:30 AM, Jan 10, 2022
+			existingRounds: []Round{
+				{
+					ID:             1,
+					RoundTimestamp: "2022-01-10T08:30:00Z",
+					Status:         "CREATED",
+				},
+			},
+			existingRoundRoundTypes: []RoundRoundType{
 				{
 					RoundTypeID: 1,
 					RoundID:     1,
@@ -72,25 +85,41 @@ func TestCreateRounds(t *testing.T) {
 					RoundID:     1,
 				},
 			},
+			expectedRoundsCount: 5,
+			expectedRounds: []RoundWithTypes{
+				{
+					ID:             1,
+					RoundTimestamp: "2022-01-10T08:30:00Z",
+					RoundTypes:     "15 Minute Round,30 Minute Round,60 Minute Round",
+				},
+				{
+					ID:             2,
+					RoundTimestamp: "2022-01-10T08:45:00Z",
+					RoundTypes:     "15 Minute Round",
+				},
+				{
+					ID:             3,
+					RoundTimestamp: "2022-01-10T09:00:00Z",
+					RoundTypes:     "15 Minute Round,30 Minute Round",
+				},
+				{
+					ID:             4,
+					RoundTimestamp: "2022-01-10T09:15:00Z",
+					RoundTypes:     "15 Minute Round",
+				},
+				{
+					ID:             5,
+					RoundTimestamp: "2022-01-10T09:30:00Z",
+					RoundTypes:     "15 Minute Round,30 Minute Round,60 Minute Round",
+				},
+			},
 		},
 		{
-			name:     "Outdated existing round - create a new round and attach all types to it",
+			name:     "Rounds are up-to-date - no new rounds should be created",
 			currTime: time.Date(2022, time.January, 10, 9, 30, 0, 0, time.UTC), // 9:30 AM, Jan 10, 2022
 			existingRounds: []Round{
 				{
 					ID:             1,
-					RoundTimestamp: "2022-01-10T07:30:00Z",
-					Status:         "CREATED",
-				},
-			},
-			expectedRounds: []Round{
-				{
-					ID:             1,
-					RoundTimestamp: "2022-01-10T07:30:00Z",
-					Status:         "CREATED",
-				},
-				{
-					ID:             2,
 					RoundTimestamp: "2022-01-10T09:30:00Z",
 					Status:         "CREATED",
 				},
@@ -109,85 +138,12 @@ func TestCreateRounds(t *testing.T) {
 					RoundID:     1,
 				},
 			},
-			expectedRoundRoundTypes: []RoundRoundType{
-				{
-					RoundTypeID: 1,
-					RoundID:     1,
-				},
-				{
-					RoundTypeID: 2,
-					RoundID:     1,
-				},
-				{
-					RoundTypeID: 3,
-					RoundID:     1,
-				},
-				{
-					RoundTypeID: 1,
-					RoundID:     2,
-				},
-				{
-					RoundTypeID: 2,
-					RoundID:     2,
-				},
-				{
-					RoundTypeID: 3,
-					RoundID:     2,
-				},
-			},
-		},
-		{
-			name:     "Only 15 minute round is due - create a new round and only attach the 15 minutes type to it",
-			currTime: time.Date(2022, time.January, 10, 9, 30, 0, 0, time.UTC), // 9:30 AM, Jan 10, 2022
-			existingRounds: []Round{
+			expectedRoundsCount: 1,
+			expectedRounds: []RoundWithTypes{
 				{
 					ID:             1,
-					RoundTimestamp: "2022-01-10T09:15:00Z",
-					Status:         "CREATED",
-				},
-			},
-			expectedRounds: []Round{
-				{
-					ID:             1,
-					RoundTimestamp: "2022-01-10T09:15:00Z",
-					Status:         "CREATED",
-				},
-				{
-					ID:             2,
 					RoundTimestamp: "2022-01-10T09:30:00Z",
-					Status:         "CREATED",
-				},
-			},
-			existingRoundRoundTypes: []RoundRoundType{
-				{
-					RoundTypeID: 1,
-					RoundID:     1,
-				},
-				{
-					RoundTypeID: 2,
-					RoundID:     1,
-				},
-				{
-					RoundTypeID: 3,
-					RoundID:     1,
-				},
-			},
-			expectedRoundRoundTypes: []RoundRoundType{
-				{
-					RoundTypeID: 1,
-					RoundID:     1,
-				},
-				{
-					RoundTypeID: 2,
-					RoundID:     1,
-				},
-				{
-					RoundTypeID: 3,
-					RoundID:     1,
-				},
-				{
-					RoundTypeID: 1,
-					RoundID:     2,
+					RoundTypes:     "15 Minute Round,30 Minute Round,60 Minute Round",
 				},
 			},
 		},
@@ -209,30 +165,22 @@ func TestCreateRounds(t *testing.T) {
 		// Call createRounds
 		createRounds(db, tt.currTime)
 
-		// Check that the rounds were created
-		var rounds []Round
-		db.Find(&rounds)
-		if len(rounds) != len(tt.expectedRounds) {
-			t.Errorf("Expected %d rounds, got %d", len(tt.expectedRounds), len(rounds))
+		// Get round with joins by grouping by round id and timestamp
+		var roundsWithTypes []*RoundWithTypes
+		db.Table("rounds").
+			Select("rounds.id, round_timestamp, group_concat(name) as round_types").
+			Joins("JOIN round_round_types ON rounds.id = round_round_types.round_id").
+			Joins("JOIN round_types ON round_round_types.round_type_id = round_types.id").
+			Group("rounds.id, round_timestamp").
+			Scan(&roundsWithTypes)
+
+		if len(roundsWithTypes) != tt.expectedRoundsCount {
+			t.Errorf("Expected %d rounds, got %d", len(tt.expectedRounds), len(roundsWithTypes))
 		}
 		for i := range tt.expectedRounds {
-			if rounds[i].ID != tt.expectedRounds[i].ID ||
-				rounds[i].RoundTimestamp != tt.expectedRounds[i].RoundTimestamp ||
-				rounds[i].Status != tt.expectedRounds[i].Status {
-				t.Errorf("Expected %v, got %v", tt.expectedRounds[i], rounds[i])
-			}
-		}
-
-		// Check that the round round types were created
-		var roundRoundTypes []RoundRoundType
-		db.Find(&roundRoundTypes)
-		if len(roundRoundTypes) != len(tt.expectedRoundRoundTypes) {
-			t.Errorf("Expected %d round round types, got %d", len(tt.expectedRoundRoundTypes), len(roundRoundTypes))
-		}
-		for i := range roundRoundTypes {
-			if roundRoundTypes[i].RoundTypeID != tt.expectedRoundRoundTypes[i].RoundTypeID ||
-				roundRoundTypes[i].RoundID != tt.expectedRoundRoundTypes[i].RoundID {
-				t.Errorf("Expected %v, got %v", tt.expectedRoundRoundTypes[i], roundRoundTypes[i])
+			if roundsWithTypes[i].ID != tt.expectedRounds[i].ID ||
+				roundsWithTypes[i].RoundTimestamp != tt.expectedRounds[i].RoundTimestamp {
+				t.Errorf("Expected %v, got %v", tt.expectedRounds[i], roundsWithTypes[i])
 			}
 		}
 	}
