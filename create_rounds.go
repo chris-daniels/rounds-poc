@@ -69,10 +69,7 @@ func createRounds(db *gorm.DB, t time.Time) {
 		}
 
 		// If there is a last round, and it is not too old, skip
-		lastRoundTime, err := time.Parse(time.RFC3339, lastRound.RoundTimestamp)
-		if err != nil {
-			panic("Failed to parse last round time")
-		}
+		lastRoundTime, _ := time.Parse(time.RFC3339, lastRound.RoundTimestamp)
 		if lastRound.ID != 0 &&
 			lastRoundTime.Add(time.Duration(roundType.DurationAmt)*time.Minute).After(t) {
 			continue
