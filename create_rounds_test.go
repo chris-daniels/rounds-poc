@@ -13,8 +13,7 @@ type RoundWithTypes struct {
 	RoundTypes     string
 }
 
-// Setup configs
-func setupConfigs(db *gorm.DB) {
+func setupRoundConfigs(db *gorm.DB) {
 	// Create round types for 15, 30, and 60 minute rounds
 	db.Create(&RoundType{
 		Name:         "15 Minute Round",
@@ -50,7 +49,6 @@ func TestCreateRounds(t *testing.T) {
 		existingRounds          []Round
 		existingRoundRoundTypes []RoundRoundType
 		expectedRoundsCount     int
-		countOnly               bool
 		expectedRounds          []RoundWithTypes
 	}{
 		{
@@ -59,7 +57,6 @@ func TestCreateRounds(t *testing.T) {
 			existingRounds:          []Round{},
 			existingRoundRoundTypes: []RoundRoundType{},
 			expectedRoundsCount:     49,
-			countOnly:               true,
 		},
 		{
 			name:     "Outdated existing round from 60 minutes ago - create rounds for the last hour",
@@ -151,19 +148,19 @@ func TestCreateRounds(t *testing.T) {
 
 	for _, tt := range tests {
 		db := setupDatabase()
-		setupConfigs(db)
+		setupRoundConfigs(db)
 
 		// Create existing rounds
 		for _, round := range tt.existingRounds {
 			db.Create(&round)
 		}
-		// Create existing round round types
+		// Create existing round-round-types
 		for _, roundRoundType := range tt.existingRoundRoundTypes {
 			db.Create(&roundRoundType)
 		}
 
 		// Call createRounds
-		createRounds(db, tt.currTime)
+		CreateRounds(db, tt.currTime)
 
 		// Get round with joins by grouping by round id and timestamp
 		var roundsWithTypes []*RoundWithTypes
@@ -174,6 +171,7 @@ func TestCreateRounds(t *testing.T) {
 			Group("rounds.id, round_timestamp").
 			Scan(&roundsWithTypes)
 
+		// Compare counts
 		if len(roundsWithTypes) != tt.expectedRoundsCount {
 			t.Errorf("Expected %d rounds, got %d", len(tt.expectedRounds), len(roundsWithTypes))
 		}
