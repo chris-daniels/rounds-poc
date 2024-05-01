@@ -1,6 +1,8 @@
 package main
 
-import "gorm.io/gorm"
+import (
+	"gorm.io/gorm"
+)
 
 type RoundType struct {
 	gorm.Model
@@ -43,4 +45,9 @@ type RoundMember struct {
 	RoundId   uint   `json:"round"`
 	Status    string `json:"status"`
 	PatientId string `json:"patientId"`
+}
+
+type StartRoundsItem struct {
+	RoundTimestamp string `json:"roundTimestamp"`
+	Status         string `json:"status"`
 }

@@ -13,6 +13,13 @@ func getRoundConfigs(db *gorm.DB) ([]RoundConfig, error) {
 	return roundConfigs, nil
 }
 
+// Get all rounds for clinic from start time to end time
+func getRounds(db *gorm.DB, startTime time.Time, endTime time.Time) ([]Round, error) {
+	var rounds []Round
+	db.Where("round_timestamp >= ? AND round_timestamp <= ?", startTime.Format(time.RFC3339), endTime.Format(time.RFC3339)).Find(&rounds)
+	return rounds, nil
+}
+
 // Get round type by ID
 func getRoundType(db *gorm.DB, roundTypeId uint) (RoundType, error) {
 	var roundType RoundType
